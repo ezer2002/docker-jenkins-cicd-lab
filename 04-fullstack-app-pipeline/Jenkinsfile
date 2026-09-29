@@ -1,0 +1,57 @@
+pipeline {
+    agent any
+
+    environment {
+        BACKEND_IMAGE  = 'gestion-projets-backend'
+        FRONTEND_IMAGE = 'gestion-projets-frontend'
+        IMAGE_TAG      = "1.0.${BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Backend Image') {
+            steps {
+                dir('04-fullstack-app-pipeline/backend') {
+                    sh 'docker build -t $BACKEND_IMAGE:$IMAGE_TAG .'
+                }
+            }
+        }
+
+        stage('Build Frontend Image') {
+            steps {
+                dir('04-fullstack-app-pipeline/frontend') {
+                    sh 'docker build -t $FRONTEND_IMAGE:$IMAGE_TAG .'
+                }
+            }
+        }
+
+        stage('Push DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials',
+                                                  usernameVariable: 'DOCKER_USER',
+                                                  passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        for IMG in $BACKEND_IMAGE $FRONTEND_IMAGE; do
+                            docker tag $IMG:$IMAGE_TAG $DOCKER_USER/$IMG:$IMAGE_TAG
+                            docker tag $IMG:$IMAGE_TAG $DOCKER_USER/$IMG:latest
+                            docker push $DOCKER_USER/$IMG:$IMAGE_TAG
+                            docker push $DOCKER_USER/$IMG:latest
+                        done
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker logout || true'
+        }
+    }
+}
