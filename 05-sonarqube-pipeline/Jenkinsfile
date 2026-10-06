@@ -1,0 +1,76 @@
+pipeline {
+    agent any
+
+    tools {
+        jdk 'JAVA_HOME'
+        maven 'M2_HOME'
+    }
+
+    environment {
+        APP_DIR = '04-fullstack-app-pipeline/backend'
+    }
+
+    stages {
+        stage('GIT') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir(env.APP_DIR) {
+                    sh 'mvn -B -ntp clean compile'
+                }
+            }
+        }
+
+        stage('Tests') {
+            steps {
+                dir(env.APP_DIR) {
+                    sh 'mvn -B -ntp test jacoco:report'
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: "${APP_DIR}/target/surefire-reports/*.xml"
+                }
+            }
+        }
+
+        stage('SonarQube') {
+            steps {
+                dir(env.APP_DIR) {
+                    withSonarQubeEnv('SonarQube') {
+                        sh 'mvn -B -ntp sonar:sonar -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.token=$SONAR_AUTH_TOKEN'
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                dir(env.APP_DIR) {
+                    sh 'mvn -B -ntp package -DskipTests'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline termine : Quality Gate passe, livrable construit.'
+        }
+        failure {
+            echo 'Pipeline en echec : voir le stage en rouge et le dashboard SonarQube.'
+        }
+    }
+}
