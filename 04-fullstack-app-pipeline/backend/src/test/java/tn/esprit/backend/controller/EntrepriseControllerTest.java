@@ -49,7 +49,8 @@ class EntrepriseControllerTest {
     void updateReturnsNotFoundWhenTheEntrepriseDoesNotExist() {
         when(service.getEntrepriseById(5L)).thenReturn(null);
 
-        assertThrows(ResponseStatusException.class,
-                () -> controller.updateEntreprise(new EntrepriseDTO(5L, "X", "Y")));
+        EntrepriseDTO dto = new EntrepriseDTO(5L, "X", "Y");
+
+        assertThrows(ResponseStatusException.class, () -> controller.updateEntreprise(dto));
     }
 }
