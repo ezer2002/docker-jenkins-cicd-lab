@@ -6,6 +6,7 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
+      - ./prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
     restart: unless-stopped
 
   grafana:
@@ -18,6 +19,25 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     restart: unless-stopped
 
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    network_mode: host
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    restart: unless-stopped
+
+  webhook:
+    image: python:3.12-alpine
+    container_name: webhook
+    network_mode: host
+    volumes:
+      - ./webhook/receiver.py:/app/receiver.py:ro
+    command: ["python", "-u", "/app/receiver.py"]
+    restart: unless-stopped
+
 volumes:
   prometheus-data:
   grafana-data:
+  alertmanager-data:

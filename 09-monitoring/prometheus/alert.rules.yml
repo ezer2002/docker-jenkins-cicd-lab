@@ -1,0 +1,29 @@
+groups:
+  - name: devops-alerts
+    rules:
+      - alert: VMHoteCPUElevee
+        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[1m])) * 100) > 80
+        for: 2m
+        labels:
+          severity: warning
+          tier: vm-hote
+        annotations:
+          summary: "CPU de la VM superieur a 80 pourcent depuis 2 minutes"
+
+      - alert: JenkinsAucunExecuteurDisponible
+        expr: default_jenkins_executors_available == 0
+        for: 5m
+        labels:
+          severity: critical
+          tier: jenkins
+        annotations:
+          summary: "Jenkins n'a plus aucun executeur disponible depuis 5 minutes"
+
+      - alert: SpringBootTauxErreurs5xxEleve
+        expr: sum(rate(http_server_requests_seconds_count{application="backend",status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count{application="backend"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          tier: spring-boot
+        annotations:
+          summary: "Plus de 5 pourcent d'erreurs HTTP 5xx sur le backend depuis 5 minutes"

@@ -75,6 +75,26 @@ Endpoints de métriques :
 - **Cette version du plugin Jenkins** n'expose pas de compteurs de builds réussis/échoués. On utilise donc le nombre de builds par job et le résultat du dernier build (`default_jenkins_builds_last_build_result_ordinal`, `0` = SUCCESS).
 - **Provisioning Grafana** : la datasource et le dashboard sont décrits par fichiers, donc reproductibles et versionnés.
 
-## Suite (en cours)
+## Alertes (Alertmanager)
 
-Alertmanager et règles d'alerte (une règle par niveau), puis test de bout en bout.
+Fichiers : `prometheus/alert.rules.yml`, `alertmanager/alertmanager.yml`, `webhook/receiver.py`.
+
+| Niveau | Règle | Condition |
+|---|---|---|
+| VM hôte | `VMHoteCPUElevee` | CPU > 80 % pendant 2 min |
+| Jenkins | `JenkinsAucunExecuteurDisponible` | `default_jenkins_executors_available == 0` pendant 5 min |
+| Spring Boot | `SpringBootTauxErreurs5xxEleve` | taux de réponses HTTP 5xx > 5 % pendant 5 min |
+
+Chaîne : Prometheus évalue les règles, pousse l'alerte à Alertmanager (port 9093), qui la regroupe et l'envoie au récepteur webhook local (port 5001). Le récepteur affiche chaque alerte dans ses logs :
+
+    docker logs webhook
+
+Choix : un webhook plutôt qu'un e-mail, car l'e-mail exige des identifiants SMTP (secrets à ne pas versionner).
+
+## Test de bout en bout
+
+Charge CPU artificielle sur tous les cœurs (arrêt automatique après 7 minutes) :
+
+    for i in $(seq 1 $(nproc)); do timeout 420 yes > /dev/null & done
+
+Résultat observé : `VMHoteCPUElevee` passe de inactive à pending puis firing (page `/alerts` de Prometheus), et le webhook reçoit `[firing] VMHoteCPUElevee`. Quand la charge s'arrête, l'alerte repasse à `[resolved]`.
