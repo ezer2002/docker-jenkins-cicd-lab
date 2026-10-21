@@ -2,6 +2,10 @@
 
 Chaîne DevOps complète construite pas à pas pendant le module DevOps (ESPRIT, 2026-2027) : conteneurisation, intégration continue, qualité du code, orchestration et supervision d'une application Spring Boot / Angular / MySQL.
 
+## Architecture
+
+![Architecture CI/CD et supervision](docs/architecture.png)
+
 ## Vue d'ensemble
 
     Git/GitHub --> Jenkins --> Maven (build + tests) --> SonarQube (Quality Gate)

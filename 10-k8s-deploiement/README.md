@@ -57,3 +57,25 @@ Puis ouvrir `http://IP_VM:8085`.
 ## Suite
 
 Étape de déploiement automatique dans le Jenkinsfile, puis Prometheus et Grafana dans le cluster.
+
+## Déploiement automatisé par Jenkins
+
+L'étape `Deploy Minikube` du Jenkinsfile applique les manifestes du dossier `k8s/` en remplaçant le tag `latest` par le numéro de build, puis attend la fin du déploiement (`kubectl rollout status`). Chaque build produit donc des images versionnées, et le cluster ne tourne que sur une version identifiée.
+
+## Supervision dans le cluster
+
+Le dossier `monitoring/` déploie Prometheus et Grafana dans le namespace `monitoring`.
+
+- Prometheus découvre les pods à superviser grâce aux annotations `prometheus.io/scrape`, `prometheus.io/path` et `prometheus.io/port`. Le backend expose ses métriques sur `/actuator/prometheus`.
+- cAdvisor, intégré au kubelet, fournit le CPU et la mémoire de chaque pod.
+- Grafana démarre avec la datasource et le dashboard déjà configurés (provisioning par ConfigMap), sans manipulation manuelle.
+
+Déploiement :
+
+    kubectl apply -f monitoring/prometheus.yaml
+    kubectl create configmap grafana-dashboards -n monitoring --from-file=monitoring/dashboards/cluster-devops.json --dry-run=client -o yaml | kubectl apply -f -
+    kubectl apply -f monitoring/grafana.yaml
+
+Accès local avec `kubectl port-forward -n monitoring svc/grafana 3001:3000` (compte `admin`, mot de passe à changer).
+
+![Dashboard Grafana du cluster](../docs/grafana-cluster.png)
