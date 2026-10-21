@@ -5,6 +5,7 @@ pipeline {
         BACKEND_IMAGE  = 'gestion-projets-backend'
         FRONTEND_IMAGE = 'gestion-projets-frontend'
         IMAGE_TAG      = "1.0.${BUILD_NUMBER}"
+        DOCKERHUB_USER = 'ezer2002'
     }
 
     stages {
@@ -45,6 +46,21 @@ pipeline {
                         done
                     '''
                 }
+            }
+        }
+
+        stage('Deploy Minikube') {
+            steps {
+                sh '''
+                    for f in 10-k8s-deploiement/k8s/*.yaml; do
+                        sed -e "s#$BACKEND_IMAGE:latest#$BACKEND_IMAGE:$IMAGE_TAG#" \
+                            -e "s#$FRONTEND_IMAGE:latest#$FRONTEND_IMAGE:$IMAGE_TAG#" "$f" | kubectl apply -f -
+                    done
+                    kubectl rollout status deployment/mysql -n gestion-projets --timeout=300s
+                    kubectl rollout status deployment/backend -n gestion-projets --timeout=420s
+                    kubectl rollout status deployment/frontend -n gestion-projets --timeout=180s
+                    kubectl get pods -n gestion-projets
+                '''
             }
         }
     }
